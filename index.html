@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT-Lab: Все включено</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at top right, #f1f5f9, #e2e8f0);
+            min-height: 100vh;
+            color: #1e293b;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeInUp 0.5s ease-out; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Styles for Games */
+        .grid-cell { transition: all 0.2s; user-select: none; }
+        .grid-cell.selected { background-color: #6366f1 !important; color: white !important; transform: scale(0.9); border-radius: 8px; }
+        .grid-cell.found { background-color: #10b981 !important; color: white !important; pointer-events: none; }
+
+        .wheel-rotate { transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1); }
+        
+        .draggable-card { cursor: grab; transition: all 0.2s; }
+        .draggable-card:active { cursor: grabbing; }
+        .dragging { opacity: 0.5; transform: scale(0.95); }
+
+        .nav-btn.active {
+            background: #6366f1 !important;
+            color: white !important;
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <header class="glass rounded-[2rem] p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
+            <div class="flex items-center gap-4">
+                <div class="bg-indigo-600 p-4 rounded-2xl text-white shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-slate-800 tracking-tight text-center md:text-left">IT-ЛАБОРАТОРИЯ</h1>
+                    <p class="text-slate-500 text-xs font-bold uppercase tracking-widest text-center md:text-left">Интерактивный квест</p>
+                </div>
+            </div>
+            <div class="bg-white px-6 py-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+                <span class="text-2xl">⭐</span>
+                <span id="scoreDisplay" class="text-3xl font-black text-slate-700">0</span>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="flex flex-wrap gap-2 mb-10 justify-center">
+            <button onclick="switchTab('words', this)" class="nav-btn active px-6 py-3 rounded-xl font-bold bg-white text-slate-500 border border-slate-200 transition-all">🔍 Филворд</button>
+            <button onclick="switchTab('wheel', this)" class="nav-btn px-6 py-3 rounded-xl font-bold bg-white text-slate-500 border border-slate-200 transition-all">🎡 Колесо</button>
+            <button onclick="switchTab('binary', this)" class="nav-btn px-6 py-3 rounded-xl font-bold bg-white text-slate-500 border border-slate-200 transition-all">🔢 Двоичный</button>
+            <button onclick="switchTab('order', this)" class="nav-btn px-6 py-3 rounded-xl font-bold bg-white text-slate-500 border border-slate-200 transition-all">🧩 Порядок</button>
+        </nav>
+
+        <main>
+            <!-- 1. ФИЛВОРД -->
+            <div id="words" class="tab-content active">
+                <div class="glass p-6 md:p-10 rounded-[2.5rem] shadow-2xl">
+                    <div class="flex flex-col lg:flex-row gap-10 items-start justify-center">
+                        <div class="w-full lg:w-56 space-y-3">
+                            <h3 class="text-xs font-black text-indigo-500 uppercase tracking-widest mb-4">Найти слова:</h3>
+                            <div id="wordList" class="grid grid-cols-2 lg:grid-cols-1 gap-2"></div>
+                        </div>
+                        <div id="wordGrid" class="grid grid-cols-10 gap-1.5 p-3 bg-slate-200/50 rounded-2xl border-4 border-white shadow-inner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. КОЛЕСО -->
+            <div id="wheel" class="tab-content">
+                <div class="glass p-10 rounded-[2.5rem] shadow-2xl flex flex-col lg:flex-row items-center gap-12">
+                    <div class="relative w-72 h-72">
+                        <div id="wheelCircle" class="wheel-rotate w-full h-full rounded-full border-8 border-white shadow-2xl relative overflow-hidden" style="background: conic-gradient(#6366f1 0 72deg, #ec4899 72deg 144deg, #10b981 144deg 216deg, #f59e0b 216deg 288deg, #3b82f6 288deg 360deg);"></div>
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[30px] border-t-red-500 z-10"></div>
+                        <button onclick="spin()" id="spinBtn" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white rounded-full shadow-2xl font-black text-indigo-600 z-20 hover:scale-110 active:scale-95 transition-all">SPIN</button>
+                    </div>
+                    <div id="quizBox" class="flex-1 w-full hidden p-8 bg-white/50 rounded-3xl border border-white"></div>
+                </div>
+            </div>
+
+            <!-- 3. ДВОИЧНЫЙ КОД -->
+            <div id="binary" class="tab-content">
+                <div class="glass p-10 rounded-[2.5rem] shadow-2xl flex flex-col lg:flex-row gap-10">
+                    <div class="flex-1 text-center">
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Переведи число</p>
+                        <h2 id="targetNum" class="text-8xl font-black text-indigo-600 mb-8">--</h2>
+                        <input type="text" id="binInput" maxlength="5" oninput="drawBinaryHints()" class="text-5xl font-mono tracking-widest text-center w-full p-6 bg-white rounded-3xl border-2 border-slate-100 mb-6 outline-none focus:border-indigo-500 transition-all" placeholder="00000">
+                        <button onclick="checkBinary()" class="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">ПРОВЕРИТЬ</button>
+                    </div>
+                    <div id="binaryHintList" class="w-full lg:w-64 space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- 4. ПОРЯДОК -->
+            <div id="order" class="tab-content">
+                <div class="glass p-10 rounded-[2.5rem] shadow-2xl max-w-2xl mx-auto">
+                    <h2 id="orderTaskTitle" class="text-xl font-black text-center mb-8 text-slate-800">--</h2>
+                    <div id="orderContainer" class="space-y-3 mb-8"></div>
+                    <button onclick="checkOrder()" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100">ПРОВЕРИТЬ АЛГОРИТМ</button>
+                    <p id="orderResult" class="mt-6 text-center font-black text-lg"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let score = 0;
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        
+        function updateScore(pts) {
+            score += pts;
+            scoreDisplay.innerText = score;
+        }
+
+        function switchTab(id, btn) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Инициализация игр при переключении
+            if (id === 'words') initWordSearch();
+            if (id === 'binary') initBinary();
+            if (id === 'order') initOrder();
+        }
+
+        // --- 🔍 ФИЛВОРД (ИСПРАВЛЕННЫЙ) ---
+        const IT_WORDS = ['PYTHON', 'SERVER', 'ROUTER', 'PIXEL', 'DATA', 'CODE', 'ARRAY', 'BYTE'];
+        let selectedCells = [];
+        let wordsFound = [];
+
+        function initWordSearch() {
+            const grid = document.getElementById('wordGrid');
+            const list = document.getElementById('wordList');
+            grid.innerHTML = ''; list.innerHTML = '';
+            wordsFound = []; selectedCells = [];
+
+            IT_WORDS.forEach(word => {
+                const item = document.createElement('div');
+                item.id = 'word-item-' + word;
+                item.className = 'px-4 py-2 bg-white border border-slate-100 rounded-xl text-sm font-bold text-slate-300 text-center shadow-sm';
+                item.innerText = word;
+                list.appendChild(item);
+            });
+
+            const size = 10;
+            let matrix = Array(size).fill(null).map(() => Array(size).fill(''));
+            IT_WORDS.forEach(word => {
+                let placed = false;
+                while (!placed) {
+                    const isV = Math.random() > 0.5;
+                    const r = Math.floor(Math.random() * (isV ? size - word.length : size));
+                    const c = Math.floor(Math.random() * (isV ? size : size - word.length));
+                    let ok = true;
+                    for (let i = 0; i < word.length; i++) {
+                        const row = isV ? r + i : r;
+                        const col = isV ? c : c + i;
+                        if (matrix[row][col] !== '') ok = false;
+                    }
+                    if (ok) {
+                        for (let i = 0; i < word.length; i++) matrix[isV?r+i:r][isV?c:c+i] = word[i];
+                        placed = true;
+                    }
+                }
+            });
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-white shadow-sm font-black text-slate-700 cursor-pointer hover:bg-indigo-50 rounded-md';
+                    cell.innerText = matrix[r][c] || String.fromCharCode(65 + Math.floor(Math.random() * 26));
+                    cell.onclick = () => {
+                        if (cell.classList.contains('found')) return;
+                        cell.classList.toggle('selected');
+                        if (cell.classList.contains('selected')) selectedCells.push(cell);
+                        else selectedCells = selectedCells.filter(x => x !== cell);
+                        
+                        const txt = selectedCells.map(x => x.innerText).join('');
+                        if (IT_WORDS.includes(txt) && !wordsFound.includes(txt)) {
+                            wordsFound.push(txt);
+                            selectedCells.forEach(x => { x.className = 'grid-cell w-8 h-8 md:w-11 md:h-11 flex items-center justify-center bg-emerald-500 text-white font-black rounded-md found animate__animated animate__pulse'; });
+                            document.getElementById('word-item-' + txt).className = 'px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold text-center shadow-lg';
+                            selectedCells = [];
+                            updateScore(50);
+                        } else if (selectedCells.length > 7) {
+                            selectedCells.forEach(x => x.classList.remove('selected'));
+                            selectedCells = [];
+                        }
+                    };
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        // --- 🎡 КОЛЕСО ---
+        const questions = [
+            { q: "Устройство вывода информации?", a: ["Мышь", "Монитор", "Процессор"], c: 1 },
+            { q: "Сколько бит в одном байте?", a: ["1024", "8", "2"], c: 1 },
+            { q: "Мозг компьютера — это...", a: ["ОЗУ", "ЦП", "БП"], c: 1 },
+            { q: "Алгоритм, имеющий цикл, называется...", a: ["Линейный", "Циклический", "Сложный"], c: 1 },
+            { q: "Вредоносная программа?", a: ["Браузер", "Вирус", "Драйвер"], c: 1 }
+        ];
+        let wheelRotation = 0;
+
+        function spin() {
+            const wheel = document.getElementById('wheelCircle');
+            const btn = document.getElementById('spinBtn');
+            const box = document.getElementById('quizBox');
+            btn.disabled = true;
+            box.classList.add('hidden');
+            
+            const extra = Math.floor(Math.random() * 360) + 1440;
+            wheelRotation += extra;
+            wheel.style.transform = `rotate(${wheelRotation}deg)`;
+
+            setTimeout(() => {
+                btn.disabled = false;
+                const idx = Math.floor(Math.random() * questions.length);
+                renderQuiz(questions[idx]);
+            }, 4000);
+        }
+
+        function renderQuiz(data) {
+            const box = document.getElementById('quizBox');
+            box.innerHTML = `
+                <h3 class="text-xl font-black text-slate-800 mb-6">${data.q}</h3>
+                <div class="flex flex-col gap-3">
+                    ${data.a.map((ans, i) => `<button onclick="checkWheelAnswer(this, ${i}, ${data.c})" class="p-4 bg-white border-2 border-slate-100 rounded-xl font-bold text-left hover:border-indigo-400 transition-all">${ans}</button>`).join('')}
+                </div>
+            `;
+            box.classList.remove('hidden');
+        }
+
+        function checkWheelAnswer(btn, i, c) {
+            if (i === c) {
+                btn.className = "p-4 bg-emerald-500 text-white rounded-xl font-bold text-left";
+                updateScore(30);
+            } else {
+                btn.className = "p-4 bg-rose-500 text-white rounded-xl font-bold text-left";
+            }
+            document.querySelectorAll('#quizBox button').forEach(b => b.disabled = true);
+        }
+
+        // --- 🔢 ДВОИЧНЫЙ КОД ---
+        let binTarget = 0;
+        function initBinary() {
+            binTarget = Math.floor(Math.random() * 31) + 1;
+            document.getElementById('targetNum').innerText = binTarget;
+            document.getElementById('binInput').value = '';
+            drawBinaryHints();
+        }
+
+        function drawBinaryHints() {
+            const input = document.getElementById('binInput').value.padStart(5, '0');
+            const hints = document.getElementById('binaryHintList');
+            hints.innerHTML = '';
+            [16, 8, 4, 2, 1].forEach((val, i) => {
+                const active = input[i] === '1';
+                hints.innerHTML += `
+                    <div class="p-4 rounded-xl flex justify-between border-2 transition-all ${active ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-50 text-slate-300'}">
+                        <span class="font-bold text-xs">2^${4-i}</span>
+                        <span class="font-black">${val}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function checkBinary() {
+            const val = document.getElementById('binInput').value;
+            if (parseInt(val, 2) === binTarget) {
+                alert("Верно! +40 XP");
+                updateScore(40);
+                initBinary();
+            } else {
+                alert("Ошибка в расчетах!");
+            }
+        }
+
+        // --- 🧩 ПОРЯДОК ---
+        const tasks = [
+            { t: "Алгоритм включения ПК", s: ["Кнопка питания", "BIOS / POST", "Загрузка ОС", "Авторизация"] },
+            { t: "Цикл работы с данными", s: ["Ввод данных", "Обработка ЦП", "Хранение в памяти", "Вывод результата"] }
+        ];
+        let correctOrder = [];
+
+        function initOrder() {
+            const container = document.getElementById('orderContainer');
+            const task = tasks[Math.floor(Math.random() * tasks.length)];
+            correctOrder = task.s;
+            document.getElementById('orderTaskTitle').innerText = task.t;
+            document.getElementById('orderResult').innerText = "";
+            
+            const shuffled = [...task.s].sort(() => Math.random() - 0.5);
+            container.innerHTML = '';
+            shuffled.forEach(s => {
+                const div = document.createElement('div');
+                div.className = "draggable-card bg-white p-4 rounded-xl border-2 border-slate-100 font-bold flex justify-between shadow-sm";
+                div.draggable = true;
+                div.dataset.val = s;
+                div.innerHTML = `<span>${s}</span> <span class="text-slate-300">⠿</span>`;
+                div.addEventListener('dragstart', () => div.classList.add('dragging'));
+                div.addEventListener('dragend', () => div.classList.remove('dragging'));
+                container.appendChild(div);
+            });
+
+            container.addEventListener('dragover', e => {
+                e.preventDefault();
+                const after = getDragAfter(container, e.clientY);
+                const dragging = document.querySelector('.dragging');
+                if (after == null) container.appendChild(dragging);
+                else container.insertBefore(dragging, after);
+            });
+        }
+
+        function getDragAfter(container, y) {
+            const elements = [...container.querySelectorAll('.draggable-card:not(.dragging)')];
+            return elements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+                else return closest;
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function checkOrder() {
+            const items = [...document.querySelectorAll('.draggable-card')];
+            let allOk = true;
+            items.forEach((item, i) => {
+                if (item.dataset.val === correctOrder[i]) {
+                    item.className = "draggable-card bg-emerald-50 p-4 rounded-xl border-2 border-emerald-500 font-bold flex justify-between text-emerald-700";
+                } else {
+                    item.className = "draggable-card bg-rose-50 p-4 rounded-xl border-2 border-rose-500 font-bold flex justify-between text-rose-700";
+                    allOk = false;
+                }
+            });
+            if (allOk) {
+                document.getElementById('orderResult').innerText = "Верно! +60 XP";
+                updateScore(60);
+                setTimeout(initOrder, 3000);
+            }
+        }
+
+        window.onload = initWordSearch;
+    </script>
+</body>
+</html>
